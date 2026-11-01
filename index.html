@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>BRONZE DIGITAL SCORING - Panel Juri</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap');
+        body { font-family: 'Montserrat', sans-serif; background-color: #f8fafc; color: #1e293b; margin: 0; height: 100vh; width: 100vw; overflow: hidden; }
+        
+        .screen { display: none; height: 100vh; width: 100vw; flex-direction: column; position: absolute; top: 0; left: 0; background: #f8fafc; }
+        .screen.active { display: flex; }
+
+        .sudut-merah-bg { background-color: #ef4444; color: white; }
+        .sudut-biru-bg { background-color: #3b82f6; color: white; }
+
+        .modal-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.9); z-index: 10000; display: none; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(4px); }
+        .modal-overlay.active { display: flex; }
+        
+        .circle-vote { width: 70px; height: 70px; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: 900; color: white; border: 4px solid rgba(0,0,0,0.1); border-bottom-width: 6px; position: relative; top: 0; transition: all 0.2s; font-size: 8px; text-transform: uppercase; }
+        .circle-active { border: 6px solid #1e293b !important; box-shadow: 0 0 25px rgba(0,0,0,0.4); transform: scale(1.1); }
+        .jr-vote-locked { pointer-events: none; opacity: 0.6; }
+        .jr-vote-selected { opacity: 1 !important; }
+
+        .jr-hit-btn { transition: all 0.05s; }
+        .jr-hit-btn:active { background-color: #fbbf24 !important; color: #000 !important; box-shadow: 0 0 30px #fbbf24 !important; transform: scale(0.95); }
+        .jr-hit-btn-off { background-color: #64748b !important; opacity: 0.5 !important; pointer-events: none !important; border-bottom: none !important; }
+
+        .juri-lamp { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-left: 5px; border: 1px solid rgba(0,0,0,0.1); }
+        .juri-lamp-red { background-color: #ef4444; box-shadow: 0 0 5px #ef4444; }
+        .juri-lamp-green { background-color: #10b981; box-shadow: 0 0 5px #10b981; }
+
+        .btn-rotate-mini { width: 28px; height: 28px; background: rgba(255,255,255,0.1); color: white; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 10px; border: 1px solid rgba(255,255,255,0.2); transition: background 0.2s;}
+        .btn-rotate-mini:active { transform: scale(0.9); }
+
+        @keyframes slideInDown { from { transform: translate3d(0, -100%, 0); visibility: visible; } to { transform: translate3d(0, 0, 0); } }
+        .juri-alert-ani { animation: slideInDown 0.5s ease-out; }
+
+        /* Custom Scrollbar */
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.4); border-radius: 4px; }
+    </style>
+</head>
+<body>
+
+    <!-- JURI SELECTION -->
+    <div id="screen-juri-select" class="screen p-8 justify-center items-center">
+        <div id="juri-alert-box" class="fixed top-10 left-0 right-0 z-[60000] flex justify-center pointer-events-none opacity-0 transition-opacity">
+            <div class="bg-red-600 text-white px-8 py-4 rounded-full font-black uppercase text-xs shadow-2xl juri-alert-ani flex items-center gap-3">
+                <i class="fas fa-exclamation-triangle"></i> JURI SUDAH MASUK
+            </div>
+        </div>
+        <div class="mb-8 text-center">
+            <h2 class="text-2xl font-black uppercase text-blue-600 italic">Panel Penilaian Juri</h2>
+        </div>
+        <div class="grid grid-cols-1 gap-4 w-full max-w-xs">
+            <button onclick="initJuri(1)" class="p-6 bg-white border-2 border-blue-500 rounded-3xl font-black text-blue-600 shadow-lg text-lg uppercase italic flex items-center justify-center gap-4">Juri 1 <div id="select-lamp-j1" class="juri-lamp juri-lamp-red"></div></button>
+            <button onclick="initJuri(2)" class="p-6 bg-white border-2 border-blue-500 rounded-3xl font-black text-blue-600 shadow-lg text-lg uppercase italic flex items-center justify-center gap-4">Juri 2 <div id="select-lamp-j2" class="juri-lamp juri-lamp-red"></div></button>
+            <button onclick="initJuri(3)" class="p-6 bg-white border-2 border-blue-500 rounded-3xl font-black text-blue-600 shadow-lg text-lg uppercase italic flex items-center justify-center gap-4">Juri 3 <div id="select-lamp-j3" class="juri-lamp juri-lamp-red"></div></button>
+        </div>
+        <button onclick="window.location.href='index.html'" class="mt-8 text-slate-400 font-bold uppercase text-[10px] tracking-widest"><i class="fas fa-arrow-left mr-2"></i> KEMBALI KE MENU UTAMA</button>
+    </div>
+
+    <!-- JURI PANEL -->
+    <div id="screen-juri" class="screen bg-slate-900">
+        
+        <!-- MODAL VAR -->
+        <div id="jr-var-overlay" class="modal-overlay">
+            <div class="bg-white rounded-[3rem] p-8 w-full max-w-md shadow-2xl border-4 border-blue-500 text-center relative overflow-hidden">
+                <div class="absolute top-0 left-0 right-0 h-2 bg-blue-500"></div>
+                <h3 class="font-black text-blue-600 italic text-xl mb-1">V A R</h3>
+                <p id="jr-var-header" class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-4 border-b border-slate-100 pb-2">---</p>
+                <div class="flex justify-between items-center mb-8 px-2 gap-2"><div class="flex-1"><p id="jr-var-b-name" class="text-blue-600 font-black text-[12px] uppercase leading-tight mb-1 truncate">---</p><p id="jr-var-b-kont" class="text-blue-400 font-bold text-[8px] uppercase italic truncate">---</p></div><div class="font-black text-slate-300 italic text-xs">VS</div><div class="flex-1"><p id="jr-var-m-name" class="text-red-600 font-black text-[12px] uppercase leading-tight mb-1 truncate">---</p><p id="jr-var-m-kont" class="text-red-400 font-bold text-[8px] uppercase italic truncate">---</p></div></div>
+                <div id="jr-vote-container" class="grid grid-cols-3 gap-4 w-full"><button id="jr-vote-biru" onclick="sendVarVote('biru')" class="circle-vote bg-blue-600 active:scale-95 shadow-lg border-4 border-blue-100"><i class="fas fa-check text-xl mb-1"></i>BIRU</button><button id="jr-vote-merah" onclick="sendVarVote('merah')" class="circle-vote bg-red-600 active:scale-95 shadow-lg border-4 border-red-100"><i class="fas fa-check text-xl mb-1"></i>MERAH</button><button id="jr-vote-kuning" onclick="sendVarVote('kuning')" class="circle-vote bg-yellow-500 active:scale-95 shadow-lg border-4 border-yellow-100"><i class="fas fa-times text-xl mb-1"></i>INVALID</button></div>
+                <p class="mt-8 text-[7px] font-black text-slate-300 uppercase italic">*Pilihan akan terkunci setelah diklik</p>
+            </div>
+        </div>
+
+        <!-- MODAL RIWAYAT (HISTORY) -->
+        <div id="history-modal" class="modal-overlay">
+            <div class="bg-slate-800 rounded-3xl p-5 md:p-8 w-full max-w-2xl shadow-2xl border-2 border-slate-600 relative flex flex-col max-h-[85vh]">
+                <button onclick="toggleHistory(false)" class="absolute top-4 right-5 text-slate-400 hover:text-white text-2xl transition-colors">
+                    <i class="fas fa-times"></i>
+                </button>
+                <h3 class="font-black text-white italic text-base md:text-lg mb-4 text-center uppercase tracking-widest"><i class="fas fa-history mr-2 text-blue-400"></i>Riwayat Poin Juri</h3>
+                
+                <div class="overflow-x-auto overflow-y-auto custom-scrollbar rounded-xl border border-slate-600 flex-1">
+                    <table class="w-full text-left border-collapse text-xs md:text-sm">
+                        <thead class="bg-slate-700 text-slate-300 uppercase font-black text-[10px] md:text-xs tracking-wider sticky top-0 z-10">
+                            <tr>
+                                <th class="p-3 border-b border-r border-slate-600 w-1/4 text-center">Sudut</th>
+                                <th class="p-3 border-b border-r border-slate-600 w-1/4 text-center">Babak 1</th>
+                                <th class="p-3 border-b border-r border-slate-600 w-1/4 text-center">Babak 2</th>
+                                <th class="p-3 border-b border-slate-600 w-1/4 text-center">Babak 3</th>
+                            </tr>
+                        </thead>
+                        <tbody class="text-white font-mono text-[10px] md:text-xs">
+                            <tr class="border-b border-slate-600 bg-blue-900/30">
+                                <td class="p-3 border-r border-slate-600 font-black text-blue-400 text-center uppercase align-middle">
+                                    <div class="bg-blue-600 text-white rounded px-2 py-1 inline-block shadow-md text-[10px]">BIRU</div>
+                                </td>
+                                <td class="p-3 border-r border-slate-600 text-center break-words align-top leading-relaxed" id="hist-biru-0">-</td>
+                                <td class="p-3 border-r border-slate-600 text-center break-words align-top leading-relaxed" id="hist-biru-1">-</td>
+                                <td class="p-3 text-center break-words align-top leading-relaxed" id="hist-biru-2">-</td>
+                            </tr>
+                            <tr class="bg-red-900/30">
+                                <td class="p-3 border-r border-slate-600 font-black text-red-400 text-center uppercase align-middle">
+                                    <div class="bg-red-600 text-white rounded px-2 py-1 inline-block shadow-md text-[10px]">MERAH</div>
+                                </td>
+                                <td class="p-3 border-r border-slate-600 text-center break-words align-top leading-relaxed" id="hist-merah-0">-</td>
+                                <td class="p-3 border-r border-slate-600 text-center break-words align-top leading-relaxed" id="hist-merah-1">-</td>
+                                <td class="p-3 text-center break-words align-top leading-relaxed" id="hist-merah-2">-</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Header Top -->
+        <div class="p-3 flex justify-between items-center border-b border-white/10 bg-slate-800">
+            <button onclick="exitJuri()" class="text-[9px] font-black text-white bg-red-600 px-4 py-2 rounded-lg shadow-md uppercase italic">EXIT</button>
+            <div class="text-center flex-1 mx-2 flex items-center justify-center gap-2">
+                <!-- Group Icons Header -->
+                <div class="flex gap-1.5 mr-1">
+                    <button onclick="toggleLandscape()" class="btn-rotate-mini bg-slate-700 border-slate-600 hover:bg-slate-600"><i class="fas fa-expand"></i></button>
+                    <!-- Tombol Histori Baru -->
+                    <button onclick="toggleHistory(true)" class="btn-rotate-mini bg-blue-600/80 border-blue-500 hover:bg-blue-600 shadow-md"><i class="fas fa-history"></i></button>
+                </div>
+                <div class="flex flex-col">
+                    <span id="jr-role-name" class="text-[14px] font-black text-blue-400 block uppercase italic tracking-wider">JURI ---</span>
+                    <span id="jr-partai-info" class="text-[8px] font-bold text-gray-300 uppercase italic">---</span>
+                </div>
+            </div>
+            <div class="flex flex-col items-end"><span id="jr-timer-disp" class="text-2xl font-black text-yellow-400 font-mono leading-none">02:00</span><span id="jr-round-badge" class="text-[8px] bg-red-600 text-white px-2 rounded mt-1 font-black">BABAK 1</span></div>
+        </div>
+        
+        <!-- Main Area Sudut -->
+        <div class="flex-1 flex flex-row p-2 gap-2 overflow-hidden">
+            <!-- SUDUT BIRU -->
+            <div class="flex-1 sudut-biru-bg rounded-[2rem] p-4 flex flex-col border-b-8 border-blue-800 shadow-2xl relative transition-all">
+                <div class="flex flex-col items-center mb-4">
+                    <p id="jr-b-nama-full" class="text-[11px] font-black uppercase truncate w-full text-center">---</p>
+                    <p id="jr-b-kont-full" class="text-[8px] font-bold opacity-80 uppercase truncate w-full text-center">---</p>
+                </div>
+                <div class="flex-1 flex flex-col gap-3 pb-2">
+                    <button id="jr-btn-hit-b1" onclick="sendHitDirect('biru', 1)" class="jr-hit-btn flex-1 bg-white/30 rounded-3xl flex flex-col items-center justify-center shadow-lg active:bg-white active:text-blue-600 transition-all uppercase"><i class="fas fa-hand-fist text-4xl mb-2"></i><span class="text-[12px] font-black tracking-tighter">PUKULAN +1</span></button>
+                    <button id="jr-btn-hit-b2" onclick="sendHitDirect('biru', 2)" class="jr-hit-btn flex-1 bg-white/30 rounded-3xl flex flex-col items-center justify-center shadow-lg active:bg-white active:text-blue-600 transition-all uppercase"><i class="fas fa-shoe-prints -rotate-90 text-4xl mb-2"></i><span class="text-[12px] font-black tracking-tighter">TENDANGAN +2</span></button>
+                </div>
+            </div>
+            
+            <!-- SUDUT MERAH -->
+            <div class="flex-1 sudut-merah-bg rounded-[2rem] p-4 flex flex-col border-b-8 border-red-800 shadow-2xl relative transition-all">
+                <div class="flex flex-col items-center mb-4">
+                    <p id="jr-m-nama-full" class="text-[11px] font-black uppercase truncate w-full text-center">---</p>
+                    <p id="jr-m-kont-full" class="text-[8px] font-bold opacity-80 uppercase truncate w-full text-center">---</p>
+                </div>
+                <div class="flex-1 flex flex-col gap-3 pb-2">
+                    <button id="jr-btn-hit-m1" onclick="sendHitDirect('merah', 1)" class="jr-hit-btn flex-1 bg-white/30 rounded-3xl flex flex-col items-center justify-center shadow-lg active:bg-white active:text-red-600 transition-all uppercase"><i class="fas fa-hand-fist text-4xl mb-2"></i><span class="text-[12px] font-black tracking-tighter">PUKULAN +1</span></button>
+                    <button id="jr-btn-hit-m2" onclick="sendHitDirect('merah', 2)" class="jr-hit-btn flex-1 bg-white/30 rounded-3xl flex flex-col items-center justify-center shadow-lg active:bg-white active:text-red-600 transition-all uppercase"><i class="fas fa-shoe-prints -rotate-90 text-4xl mb-2"></i><span class="text-[12px] font-black tracking-tighter">TENDANGAN +2</span></button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Audio Effect -->
+    <audio id="snd-hit" src="https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3"></audio>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+    // Konfigurasi Firebase (Harus disamakan dengan pusat)
+    const firebaseConfig = {
+  apiKey: "AIzaSyAVwQw-zBMEVbRaQc2lcWfdss3l2zOhoNs",
+  authDomain: "pscp-ternate.firebaseapp.com",
+  databaseURL: "https://pscp-ternate-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "pscp-ternate",
+  storageBucket: "pscp-ternate.firebasestorage.app",
+  messagingSenderId: "1057698178770",
+  appId: "1:1057698178770:web:d4ed0a01f84d26603c2f0b"
+};
+
+    const app = initializeApp(firebaseConfig);
+    const database = getDatabase(app);
+    const dbRef = ref(database, 'pencak_scoring_state');
+
+    window.state = {};
+    window.localJuri = localStorage.getItem('pencak_role_juri') || 0;
+
+    // Load inisial screen
+    if(window.localJuri && window.localJuri != 0) {
+        document.getElementById('screen-juri').classList.add('active');
+    } else {
+        document.getElementById('screen-juri-select').classList.add('active');
+    }
+
+    window.broadcast = function(path = "", value = null) {
+        if (path !== "") { const specificRef = ref(database, 'pencak_scoring_state/' + path); set(specificRef, value); }
+        else { set(dbRef, window.state); }
+    }
+
+    // PENYELESAIAN BUG RACE CONDITION & VALIDASI:
+    // Dipindah ke sistem baca terpusat setiap ada update buffer sehingga klik bersamaan pasti terbaca & dieksekusi 1x dengan perhitungan absolut.
+    window.checkAllBuffers = function() {
+        if (!window.state || !window.state.buffer || !window.state.isRunning) return;
+        if (!window.localJuri || window.localJuri == 0) return;
+
+        const myJk = 'j' + window.localJuri;
+
+        ['biru', 'merah'].forEach(sudut => {
+            ['v1', 'v2'].forEach(valKey => {
+                if (!window.state.buffer[sudut] || !window.state.buffer[sudut][valKey]) return;
+                const hits = window.state.buffer[sudut][valKey];
+                const value = (valKey === 'v1') ? 1 : 2;
+                
+                let activeJuries = [];
+                ['j1', 'j2', 'j3'].forEach(k => {
+                    if (hits[k] > 0) activeJuries.push({ jk: k, t: hits[k] });
+                });
+
+                // Jika terdeteksi minimal 2 juri memencet tombol
+                if (activeJuries.length >= 2) {
+                    // Sorting berdasarkan waktu & pemecah masalah (tie-breaker) jika waktu persis sama 
+                    activeJuries.sort((a, b) => {
+                        if (a.t === b.t) return a.jk.localeCompare(b.jk);
+                        return a.t - b.t;
+                    });
+                    
+                    // Mencari kluster hit yang berada dalam toleransi 2000 milidetik (2 Detik)
+                    let cluster = [];
+                    for (let i = 0; i < activeJuries.length; i++) {
+                        cluster = [activeJuries[i]];
+                        for (let j = i + 1; j < activeJuries.length; j++) {
+                            if (activeJuries[j].t - activeJuries[i].t <= 2000) {
+                                cluster.push(activeJuries[j]);
+                            }
+                        }
+                        if (cluster.length >= 2) break; 
+                    }
+
+                    if (cluster.length >= 2) {
+                        // Menunjuk HANYA SATU client juri (juri terakhir yang melengkapi kluster) untuk melakukan kalkulasi point server
+                        // Hal ini mencegah duplikasi perhitungan yang dapat menyebabkan kelipatan point ngawur.
+                        const processor = cluster[cluster.length - 1].jk;
+                        
+                        if (myJk === processor) {
+                            const babakIdx = (window.state.babak || 1) - 1;
+                            
+                            // Eksekusi untuk semua juri yang valid di dalam kluster
+                            cluster.forEach(c => {
+                                const jk = c.jk;
+                                if (!window.state[sudut].juri) window.state[sudut].juri = {};
+                                if (!window.state[sudut].juri[jk]) window.state[sudut].juri[jk] = [0,0,0];
+                                
+                                // Diparsing menggunakan parseInt untuk mencegah string concatenation secara ajaib
+                                const currentVal = parseInt(window.state[sudut].juri[jk][babakIdx]) || 0; 
+                                const newVal = currentVal + parseInt(value);
+                                
+                                window.state[sudut].juri[jk][babakIdx] = newVal; 
+                                window.broadcast(`${sudut}/juri/${jk}/${babakIdx}`, newVal); 
+
+                                // Update indikator "Sah" / True di riwayat History Modal juri tersebut
+                                if (window.state[sudut].history && window.state[sudut].history[jk] && window.state[sudut].history[jk][babakIdx]) {
+                                    let histArr = window.state[sudut].history[jk][babakIdx];
+                                    for(let i = histArr.length - 1; i >= 0; i--) {
+                                        if(histArr[i].t === c.t && !histArr[i].s) {
+                                            histArr[i].s = true;
+                                            break;
+                                        }
+                                    }
+                                    window.broadcast(`${sudut}/history/${jk}/${babakIdx}`, histArr);
+                                }
+
+                                // Reset buffer menjadi 0 agar tidak terbaca lagi di siklus selanjutnya
+                                window.state.buffer[sudut][valKey][jk] = 0;
+                                window.broadcast(`buffer/${sudut}/${valKey}/${jk}`, 0);
+                            });
+
+                            // Update indikator Global Layar
+                            const freqKey = (value === 1) ? 'pukulanFreq' : 'tendanganFreq'; 
+                            window.state[sudut][freqKey] = (parseInt(window.state[sudut][freqKey]) || 0) + 1; 
+                            window.broadcast(`${sudut}/${freqKey}`, window.state[sudut][freqKey]); 
+
+                            const snd = document.getElementById('snd-hit'); 
+                            if(snd) { snd.currentTime = 0; snd.play(); } 
+
+                            const involvedJks = cluster.map(c => c.jk);
+                            window.broadcast(`lastHit`, { sudut: sudut, time: Date.now(), multiple: involvedJks, type: value });
+                        }
+                    }
+                }
+            });
+        });
+    }
+
+    onValue(dbRef, (snapshot) => {
+        const data = snapshot.val();
+        if (data) { 
+            window.state = data; 
+            if(window.checkAllBuffers) window.checkAllBuffers();
+            updateUI(); 
+
+            // Jika sesi aktif namun juri sudah direset dari server oleh Dewan
+            if(window.localJuri && window.state.juriStatus && !window.state.juriStatus['j' + window.localJuri]) {
+                if(document.getElementById('screen-juri').classList.contains('active')) {
+                    exitJuri(true); 
+                }
+            }
+        }
+    });
+
+    window.changeScreen = function(id) { 
+        if (document.fullscreenElement) { document.exitFullscreen().catch(e => console.log(e)); }
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); 
+        document.getElementById('screen-'+id).classList.add('active'); 
+    }
+
+    window.toggleLandscape = function() {
+        if (!document.fullscreenElement) { 
+            document.documentElement.requestFullscreen().then(() => { 
+                if (screen.orientation && screen.orientation.lock) {
+                    screen.orientation.lock('landscape').catch(e => console.log(e)); 
+                }
+            }); 
+        } else {
+            document.exitFullscreen();
+        }
+    }
+
+    // Fungsi membuka / menutup Tabel Riwayat
+    window.toggleHistory = function(show) {
+        const modal = document.getElementById('history-modal');
+        if (show) {
+            modal.classList.add('active');
+        } else {
+            modal.classList.remove('active');
+        }
+    }
+
+    window.initJuri = function(n) { 
+        if(window.state.juriStatus && window.state.juriStatus['j'+n]) { 
+            const alertBox = document.getElementById('juri-alert-box'); 
+            alertBox.style.opacity = '1'; 
+            setTimeout(() => { alertBox.style.opacity = '0'; }, 3000); 
+            return; 
+        } 
+        window.localJuri = n; 
+        localStorage.setItem('pencak_role_juri', n); 
+        window.broadcast(`juriStatus/j${n}`, true); 
+        changeScreen('juri'); 
+        updateUI();
+    }
+    
+    window.exitJuri = function(forced = false) { 
+        if(window.localJuri) { 
+            if(!forced) { window.broadcast(`juriStatus/j${window.localJuri}`, false); }
+            window.localJuri = 0; 
+            localStorage.removeItem('pencak_role_juri'); 
+            changeScreen('juri-select'); 
+        } 
+    }
+    
+    // Fungsi ini kini hanya ditujukan untuk menginput ketukan juri ke antrian buffer dan server
+    // Kalkulasi validasi dipindahkan ke logika checkAllBuffers (Dijalankan dari Listener Firebase) agar tidak terlewat sedikitpun saat diklik bersamaan
+    window.sendHitDirect = function(sudut, value) { 
+        if(!window.state.isRunning) return; 
+        const now = Date.now(); 
+        const juriKey = 'j' + window.localJuri; 
+        const babakIdx = (window.state.babak || 1) - 1; 
+        const valKey = 'v' + value; 
+        
+        if(!window.state[sudut]) window.state[sudut] = {};
+        if(!window.state[sudut].history) window.state[sudut].history = {};
+        if(!window.state[sudut].history[juriKey]) window.state[sudut].history[juriKey] = [[], [], []];
+        if(!window.state[sudut].history[juriKey][babakIdx]) window.state[sudut].history[juriKey][babakIdx] = [];
+        
+        // Push object histori (v = value, t = time, s = status valid di set false terlebih dahulu)
+        window.state[sudut].history[juriKey][babakIdx].push({ v: value, t: now, s: false });
+        window.broadcast(`${sudut}/history/${juriKey}/${babakIdx}`, window.state[sudut].history[juriKey][babakIdx]);
+
+        // Cek inisiasi Buffer jika belum ada dari dewan layar
+        if(!window.state.buffer) window.state.buffer = {biru: {v1:{}, v2:{}}, merah: {v1:{}, v2:{}}};
+        if(!window.state.buffer[sudut]) window.state.buffer[sudut] = {v1:{}, v2:{}};
+        if(!window.state.buffer[sudut][valKey]) window.state.buffer[sudut][valKey] = {};
+        
+        // Input waktu click baru dan kirim ke cloud
+        window.state.buffer[sudut][valKey][juriKey] = now; 
+        window.broadcast(`buffer/${sudut}/${valKey}/${juriKey}`, now); 
+        
+        // Refresh UI Lokal segera
+        updateUI(); 
+        
+        // Panggil refresh sekali lagi setelah lebih dari 2 detik (2100ms) untuk me-render coretan poin jika poin tidak sah (hangus)
+        setTimeout(() => updateUI(), 2100);
+    }
+
+    window.sendVarVote = function(c) { 
+        if(!window.localJuri || window.state.var.votes['j' + window.localJuri]) return; 
+        window.broadcast(`var/votes/j${window.localJuri}`, c); 
+    }
+
+    window.updateUI = function() {
+        if (!window.state || !window.state.matches) return;
+
+        const mb = window.state.bertandingIdx >= 0 ? window.state.matches[window.state.bertandingIdx] : window.state.matches[window.state.idx];
+        
+        // Update Timer & Babak
+        const tStr = (s) => `${Math.floor(s/60).toString().padStart(2,'0')}:${((s||0)%60).toString().padStart(2,'0')}`;
+        const timerEl = document.getElementById('jr-timer-disp');
+        if (timerEl) timerEl.innerText = tStr(window.state.timer);
+
+        const roundBadge = document.getElementById('jr-round-badge');
+        if (roundBadge) roundBadge.innerText = "BABAK " + (window.state.babak || 1);
+
+        // Lampu indikator status juri
+        if(window.state.juriStatus) { 
+            ['j1', 'j2', 'j3'].forEach(j => { 
+                const el = document.getElementById('select-lamp-'+j); 
+                if(el) { 
+                    el.classList.toggle('juri-lamp-green', window.state.juriStatus[j]); 
+                    el.classList.toggle('juri-lamp-red', !window.state.juriStatus[j]); 
+                } 
+            }); 
+        }
+
+        if(window.localJuri) {
+            const juriKey = 'j' + window.localJuri;
+
+            document.getElementById('jr-role-name').innerText = `JURI ${window.localJuri}`;
+            document.getElementById('jr-partai-info').innerText = `PARTAI ${mb.p} / BABAK ${window.state.babak || 1} / ${mb.fase} / ${mb.cat} ${mb.kelas} ${mb.gender}`.toUpperCase();
+            
+            document.getElementById('jr-b-nama-full').innerText = mb.b || "BIRU"; 
+            document.getElementById('jr-b-kont-full').innerText = mb.kb || "---";
+            document.getElementById('jr-m-nama-full').innerText = mb.m || "MERAH"; 
+            document.getElementById('jr-m-kont-full').innerText = mb.km || "---";
+            
+            const isRunning = window.state.isRunning; 
+            ['jr-btn-hit-b1', 'jr-btn-hit-b2', 'jr-btn-hit-m1', 'jr-btn-hit-m2'].forEach(btnId => { 
+                const btn = document.getElementById(btnId); 
+                if(btn) btn.classList.toggle('jr-hit-btn-off', !isRunning); 
+            });
+
+            // -----------------------------------------------------------------------------------
+            // LOGIC RENDER RIWAYAT UI (MODAL TABEL)
+            // -----------------------------------------------------------------------------------
+            const currentTime = Date.now();
+            const formatHist = (arr) => {
+                if (!arr || arr.length === 0) return '-';
+                return arr.map(item => {
+                    // Check menggunakan format object yang baru
+                    if (typeof item === 'object' && item !== null) {
+                        if (item.s) {
+                            // Valid dan sah -> bold terang
+                            return `<span class="text-white font-bold">${item.v}</span>`;
+                        } else {
+                            // Jika belum sah, dan waktunya sudah lebih dari 2 detik -> dicoret
+                            if (currentTime - item.t > 2000) {
+                                return `<span class="text-white/30 line-through decoration-red-500 decoration-[1.5px]">${item.v}</span>`;
+                            } else {
+                                // Jika pending di bawah 2 detik
+                                return `<span class="text-white/80">${item.v}</span>`;
+                            }
+                        }
+                    } else {
+                        // Fallback untuk history data array primitif jika ada
+                        return `<span class="text-white font-bold">${item}</span>`;
+                    }
+                }).join('<span class="text-white/20">, </span>');
+            };
+            
+            ['biru', 'merah'].forEach(sudut => {
+                if (window.state[sudut] && window.state[sudut].history && window.state[sudut].history[juriKey]) {
+                    document.getElementById(`hist-${sudut}-0`).innerHTML = formatHist(window.state[sudut].history[juriKey][0]);
+                    document.getElementById(`hist-${sudut}-1`).innerHTML = formatHist(window.state[sudut].history[juriKey][1]);
+                    document.getElementById(`hist-${sudut}-2`).innerHTML = formatHist(window.state[sudut].history[juriKey][2]);
+                } else {
+                    document.getElementById(`hist-${sudut}-0`).innerHTML = '-';
+                    document.getElementById(`hist-${sudut}-1`).innerHTML = '-';
+                    document.getElementById(`hist-${sudut}-2`).innerHTML = '-';
+                }
+            });
+
+            // Tampilan overlay Verifikasi (VAR)
+            if (window.state.var && window.state.var.active) { 
+                document.getElementById('jr-var-overlay').classList.add('active'); 
+                document.getElementById('jr-var-header').innerText = `Partai ${mb.p} ${mb.fase} ${mb.kelas} ${mb.cat} ${mb.gender}`.toUpperCase(); 
+                document.getElementById('jr-var-b-name').innerText = mb.b || "BIRU"; 
+                document.getElementById('jr-var-b-kont').innerText = mb.kb || "---"; 
+                document.getElementById('jr-var-m-name').innerText = mb.m || "MERAH"; 
+                document.getElementById('jr-var-m-kont').innerText = mb.km || "---"; 
+                
+                const v = window.state.var.votes[juriKey]; 
+                const container = document.getElementById('jr-vote-container'); 
+                
+                ['biru', 'merah', 'kuning'].forEach(c => { 
+                    const el = document.getElementById(`jr-vote-${c}`); 
+                    if(el) { 
+                        el.classList.remove('circle-active', 'jr-vote-selected'); 
+                        if(v) { 
+                            container.classList.add('jr-vote-locked'); 
+                            if(v === c) el.classList.add('circle-active', 'jr-vote-selected'); 
+                        } else {
+                            container.classList.remove('jr-vote-locked'); 
+                        }
+                    } 
+                }); 
+            } else {
+                document.getElementById('jr-var-overlay').classList.remove('active');
+            }
+        }
+    }
+</script>
+</body>
+</html>
